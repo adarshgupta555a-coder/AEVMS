@@ -1486,9 +1486,9 @@ async function runPhase6InvoicesAndPaymentsTestSuite() {
     );
 
     // 6.10 Razorpay Verification & Auto-Settlement: Valid signature verified and settles Invoice Alpha to PAID
-    const testPaymentId = `pay_rzp_live_${Date.now()}`;
+    const testPaymentId = `pay_test_${Date.now()}`;
     const validSignature = crypto
-      .createHmac("sha256", "rzp_secret_placeholder")
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "test_secret_placeholder")
       .update(`${rzpOrderData?.orderId}|${testPaymentId}`)
       .digest("hex");
 

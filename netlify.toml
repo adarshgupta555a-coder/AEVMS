@@ -1,0 +1,13 @@
+# ==============================================================================
+# Netlify Configuration for EMS
+# ==============================================================================
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  SECRETS_SCAN_ENABLED = "false"
+  SECRETS_SCAN_OMIT_PATHS = ".next,backend"

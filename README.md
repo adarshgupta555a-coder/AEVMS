@@ -217,7 +217,7 @@ npm run test:phase7          # Inventory Management & Double-Entry Movement Ledg
 
 ## 🔑 Default Administrator Credentials
 - **Email:** `admin@ems.local`
-- **Password:** `Admin@123456`
+- **Password:** Defined via `INITIAL_ADMIN_PASSWORD` in your `.env` (default in seed is user-configured)
 - **Role:** `ADMIN`
 
 *(Change the administrator password in production immediately upon deployment).*
