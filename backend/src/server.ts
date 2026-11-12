@@ -8,7 +8,7 @@ const startServer = async (): Promise<void> => {
     await connectDatabase();
 
     // 2. Start Express HTTP server
-    const server = app.listen(env.PORT, () => {
+    const server = app.listen(env.PORT, "0.0.0.0", () => {
       console.log(
         `[EMS Server] Running in ${env.NODE_ENV} mode on http://localhost:${env.PORT}`
       );
