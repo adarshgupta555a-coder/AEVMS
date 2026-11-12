@@ -1,0 +1,822 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  CLIENT
+}
+
+enum USERROLE {
+  ADMIN
+  CLIENT
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum EventStatus {
+  DRAFT
+  CONFIRMED
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CalendarEntryType {
+  MEETING
+  SITE_VISIT
+  VENDOR_MEETING
+  OFFICE_ACTIVITY
+  OTHER
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum InvoiceType {
+  PROFORMA
+  FINAL
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CARD
+  CHEQUE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  ADVANCE
+  PARTIAL
+  FULL
+  OTHER
+}
+
+enum InventoryItemType {
+  REUSABLE
+  CONSUMABLE
+}
+
+enum InventoryMovementType {
+  PURCHASE
+  EVENT_ISSUE
+  EVENT_RETURN
+  DAMAGE
+  LOSS
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+}
+
+enum TieUpType {
+  RESTAURANT
+  HOTEL
+}
+
+enum TieUpStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+}
+
+enum CommissionType {
+  FIXED
+  PERCENTAGE
+}
+
+enum TieUpTransactionType {
+  SECURITY_DEPOSIT_PAID
+  SECURITY_DEPOSIT_REFUNDED
+  COMMISSION_RECEIVED
+  OTHER_INCOME
+  OTHER_EXPENSE
+}
+
+enum ExpenseScope {
+  EVENT
+  BUSINESS
+}
+
+enum ExpenseCategory {
+  TRANSPORTATION
+  BANQUET_COMMISSION
+  OTHER_OPERATING
+  INVENTORY_PURCHASE
+}
+
+// enum ExpensePaymentMethod {
+//   CASH
+//   UPI
+//   BANK_TRANSFER
+//   CARD
+//   CHEQUE
+//   OTHER
+// }
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         USERROLE @default(CLIENT)
+  isActive     Boolean  @default(true)
+
+  clientId String? @unique
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  invitationToken     String?
+  invitationExpiresAt DateTime?
+
+  refreshTokens          RefreshToken[]
+  event                  Event[]           @relation("EventCreatedBy")
+  // eventTask     EventTask[] @relation("EventTaskAssignedTo")
+  calendarEntry          CalendarEntry[]   @relation("CalendarEntryCreatedBy")
+  invoice                Invoice[]         @relation("InvoiceCreatedBy")
+  recordedPayments       Payment[]         @relation("PaymentRecordedBy")
+  expensesCreated        Expense[]         @relation("ExpenseCreatedBy")
+  expensePaymentsCreated ExpensePayment[]  @relation("ExpensePaymentCreatedBy")
+  withdrawalsCreated     OwnerWithdrawal[] @relation("WithdrawalCreatedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quotation Quotation[] @relation("QuotationCreatedBy")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Client {
+  id      String  @id @default(uuid())
+  name    String
+  email   String?
+  phone   String
+  address String?
+  city    String?
+  notes   String?
+
+  user          User?
+  quotations    Quotation[]
+  event         Event[]
+  invoice       Invoice[]
+  payments      Payment[]
+  calendarEntry CalendarEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Quotation {
+  id              String @id @default(uuid())
+  quotationNumber String @unique
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  title      String
+  eventType  String
+  eventDate  DateTime?
+  venue      String?
+  guestCount Int?
+
+  subtotal      Decimal       @db.Decimal(12, 2)
+  discountType  DiscountType?
+  discountValue Decimal       @default(0) @db.Decimal(12, 2)
+  taxRate       Decimal       @default(0) @db.Decimal(5, 2)
+  taxAmount     Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount   Decimal       @db.Decimal(12, 2)
+
+  validUntil DateTime?
+  status     QuotationStatus @default(DRAFT)
+
+  notes String?
+  terms String?
+
+  createdById String
+  createdBy   User   @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+
+  items QuotationItem[]
+
+  sentAt     DateTime?
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+
+  event Event[]
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  invoiceItems InvoiceItem[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([createdById])
+}
+
+model QuotationItem {
+  id String @id @default(uuid())
+
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  itemName    String
+  description String?
+  quantity    Decimal @db.Decimal(10, 2)
+  unit        String?
+  unitPrice   Decimal @db.Decimal(12, 2)
+  totalPrice  Decimal @db.Decimal(12, 2)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quotationId])
+}
+
+model Event {
+  id          String @id @default(uuid())
+  eventNumber String @unique
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  quotationId String?    @unique
+  quotation   Quotation? @relation(fields: [quotationId], references: [id])
+
+  title       String
+  eventType   String
+  description String?
+
+  eventDate DateTime
+  startTime DateTime?
+  endTime   DateTime?
+
+  venueName    String?
+  venueAddress String?
+  guestCount   Int?
+
+  budget Decimal?    @db.Decimal(12, 2)
+  status EventStatus @default(DRAFT)
+  notes  String?
+
+  createdById String
+  createdBy   User   @relation("EventCreatedBy", fields: [createdById], references: [id])
+
+  tasks                EventTask[]
+  schedules            EventSchedule[]
+  calendar             CalendarEntry[]
+  invoice              Invoice[]
+  payments             Payment[]
+  inventoryAllocations EventInventory[]
+  tieUpEvent           TieUpEvent[]
+  expense              Expense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([eventDate])
+  @@index([status])
+}
+
+model EventTask {
+  id String @id @default(uuid())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+
+  // assignedToId String?
+  // assignedTo   User?        @relation("EventTaskAssignedTo", fields: [assignedToId], references: [id])
+
+  dueDate     DateTime?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  // @@index([assignedToId])
+  @@index([status])
+}
+
+model EventSchedule {
+  id String @id @default(uuid())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+
+  startAt DateTime
+  endAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  @@index([startAt])
+}
+
+model CalendarEntry {
+  id String @id @default(uuid())
+
+  title       String
+  description String?
+
+  type CalendarEntryType @default(OTHER)
+
+  startAt DateTime
+  endAt   DateTime?
+  allDay  Boolean   @default(false)
+
+  location String?
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id])
+
+  createdById String
+  createdBy   User   @relation("CalendarEntryCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startAt])
+  @@index([eventId])
+}
+
+model Invoice {
+  id            String @id @default(uuid())
+  invoiceNumber String @unique
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id])
+
+  title       String
+  invoiceDate DateTime
+  dueDate     DateTime?
+
+  subtotal      Decimal       @db.Decimal(12, 2)
+  discountType  DiscountType?
+  discountValue Decimal       @default(0) @db.Decimal(12, 2)
+  taxRate       Decimal       @default(0) @db.Decimal(5, 2)
+  taxAmount     Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount   Decimal       @db.Decimal(12, 2)
+
+  status InvoiceStatus @default(DRAFT)
+
+  notes String?
+  terms String?
+
+  createdById String
+  createdBy   User   @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+
+  items              InvoiceItem[]
+  proformaPayments   Payment[]           @relation("ProformaPayments")
+  paymentAllocations PaymentAllocation[]
+
+  sentAt      DateTime?
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([eventId])
+  @@index([status])
+  @@index([invoiceDate])
+}
+
+model InvoiceItem {
+  id String @id @default(uuid())
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  itemName    String
+  description String?
+
+  quantity   Decimal @db.Decimal(10, 2)
+  unit       String?
+  unitPrice  Decimal @db.Decimal(12, 2)
+  totalPrice Decimal @db.Decimal(12, 2)
+
+  sortOrder Int @default(0)
+
+  type InvoiceType
+
+  quotationId String?
+  quotation   Quotation? @relation(fields: [quotationId], references: [id])
+
+  advanceAdjusted Decimal @default(0) @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id            String @id @default(uuid())
+  paymentNumber String @unique
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id])
+
+  // Proforma invoice jiski request ke against advance aaya
+  proformaInvoiceId String?
+  proformaInvoice   Invoice? @relation("ProformaPayments", fields: [proformaInvoiceId], references: [id])
+
+  amount        Decimal       @db.Decimal(12, 2)
+  paymentType   PaymentType   @default(OTHER)
+  paymentMethod PaymentMethod
+  status        PaymentStatus @default(COMPLETED)
+
+  transactionReference String?
+  paymentDate          DateTime
+  notes                String?
+
+  recordedById String
+  recordedBy   User   @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+
+  allocations PaymentAllocation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([eventId])
+  @@index([paymentDate])
+  @@index([status])
+}
+
+model PaymentAllocation {
+  id String @id @default(uuid())
+
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id])
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+
+  amount Decimal @db.Decimal(12, 2)
+
+  allocatedAt DateTime @default(now())
+
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
+}
+
+model InventoryCategory {
+  id String @id @default(uuid())
+
+  name        String  @unique
+  description String?
+
+  items InventoryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InventoryItem {
+  id String @id @default(uuid())
+
+  name        String
+  description String?
+
+  categoryId String
+  category   InventoryCategory @relation(fields: [categoryId], references: [id])
+
+  itemType InventoryItemType
+
+  sku  String? @unique
+  unit String
+
+  currentStock Decimal @default(0) @db.Decimal(12, 2)
+  minimumStock Decimal @default(0) @db.Decimal(12, 2)
+
+  purchasePrice Decimal? @db.Decimal(12, 2)
+
+  isActive Boolean @default(true)
+
+  eventAllocations EventInventory[]
+  movements        InventoryMovement[]
+  // expense Expense[] @relation("ExpenseinventoryId")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([name])
+}
+
+model EventInventory {
+  id String @id @default(uuid())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  requiredQuantity Decimal @default(0) @db.Decimal(12, 2)
+  issuedQuantity   Decimal @default(0) @db.Decimal(12, 2)
+  returnedQuantity Decimal @default(0) @db.Decimal(12, 2)
+  damagedQuantity  Decimal @default(0) @db.Decimal(12, 2)
+
+  notes String?
+
+  movements InventoryMovement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, inventoryItemId])
+  @@index([inventoryItemId])
+}
+
+model InventoryMovement {
+  id String @id @default(uuid())
+
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  eventInventoryId String?
+  eventInventory   EventInventory? @relation(fields: [eventInventoryId], references: [id])
+
+  movementType InventoryMovementType
+
+  quantity Decimal  @db.Decimal(12, 2)
+  unitCost Decimal? @db.Decimal(12, 2)
+
+  referenceNumber String?
+  notes           String?
+
+  // Link inventory purchase movement to its expense
+  expenseId String?
+  expense   Expense? @relation(fields: [expenseId], references: [id], onDelete: Restrict)
+
+  movementDate DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([expenseId])
+  @@index([inventoryItemId])
+  @@index([eventInventoryId])
+  @@index([movementDate])
+}
+
+model TieUp {
+  id     String      @id @default(uuid())
+  name   String
+  type   TieUpType
+  status TieUpStatus @default(ACTIVE)
+
+  // Contact information
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  city          String?
+
+  // Refundable security deposit
+  securityDeposit Decimal @default(0) @db.Decimal(12, 2)
+
+  // Default commission configuration
+  commissionType  CommissionType @default(FIXED)
+  commissionValue Decimal        @default(0) @db.Decimal(12, 2)
+
+  notes String?
+
+  // Relations
+  events       TieUpEvent[]
+  transactions TieUpTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([status])
+}
+
+model TieUpEvent {
+  id String @id @default(uuid())
+
+  tieUpId String
+  eventId String
+
+  tieUp TieUp @relation(fields: [tieUpId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+
+  // Commission snapshot for this event
+  commissionType       CommissionType
+  commissionValue      Decimal        @db.Decimal(12, 2)
+  commissionBaseAmount Decimal?       @db.Decimal(12, 2)
+  commissionAmount     Decimal        @db.Decimal(12, 2)
+
+  notes String?
+
+  transactions TieUpTransaction[]
+  expense      Expense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tieUpId, eventId])
+  @@index([eventId])
+  @@index([tieUpId])
+}
+
+model TieUpTransaction {
+  id String @id @default(uuid())
+
+  tieUpId String
+  tieUp   TieUp  @relation(fields: [tieUpId], references: [id])
+
+  // Optional event reference for event-related commission
+  tieUpEventId String?
+  tieUpEvent   TieUpEvent? @relation(fields: [tieUpEventId], references: [id])
+
+  transactionType TieUpTransactionType
+
+  amount Decimal @db.Decimal(12, 2)
+
+  transactionDate DateTime @default(now())
+  referenceNumber String?
+  notes           String?
+
+  createdAt DateTime @default(now())
+
+  @@index([tieUpId])
+  @@index([tieUpEventId])
+  @@index([transactionType])
+  @@index([transactionDate])
+}
+
+model Expense {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  amount      Decimal @db.Decimal(12, 2)
+
+  scope    ExpenseScope
+  category ExpenseCategory
+
+  expenseDate DateTime @default(now())
+
+  paidTo     String?
+  receiptUrl String?
+
+  // Event relation
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  // Banquet commission relation
+  tieUpEventId String?
+  tieUpEvent   TieUpEvent? @relation(fields: [tieUpEventId], references: [id], onDelete: Restrict)
+
+  // Inventory purchase movements
+  inventoryMovements InventoryMovement[]
+
+  // Actual payments
+  payments ExpensePayment[]
+
+  // Created by
+  createdById String?
+  createdBy   User?   @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scope, category])
+  @@index([eventId, expenseDate])
+  @@index([tieUpEventId])
+}
+
+model ExpensePayment {
+  id String @id @default(cuid())
+
+  expenseId String
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Restrict)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  paymentMethod PaymentMethod
+  paidAt        DateTime      @default(now())
+
+  referenceNo String?
+  note        String?
+
+  createdById String?
+  createdBy   User?   @relation("ExpensePaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([expenseId, paidAt])
+}
+
+model OwnerWithdrawal {
+  id String @id @default(cuid())
+
+  amount Decimal @db.Decimal(12, 2)
+
+  purpose        String?
+  withdrawalDate DateTime @default(now())
+
+  paymentMethod PaymentMethod
+
+  referenceNo String?
+  note        String?
+
+  createdById String?
+  createdBy   User?   @relation("WithdrawalCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([withdrawalDate])
+}
