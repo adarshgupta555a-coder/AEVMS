@@ -211,14 +211,20 @@ EMS operates as a client-server architecture consisting of a Next.js 15 frontend
      On matching signature, creates verified `Payment` and settles target invoice.
 
 ### 4.6 Inventory Ledger & Logistics Movement
-- **Description:** Double-entry warehouse inventory accounting tracking reusables and consumables across events.
+- **Description:** Double-entry warehouse inventory accounting tracking reusables, consumables, and third-party rentals across events.
+- **Equipment Ownership Classification (`InventoryUsageType`):**
+  - `OWNED`: Company-owned assets stored in internal warehouse inventory.
+  - `RENTED`: External third-party vendor equipment hired for event execution.
+- **Rental Calculation Formulations:**
+  $$\text{rentalDays} = \max(1, \lceil(\text{rentalEndDate} - \text{rentalStartDate}) / 86400000\rceil)$$
+  $$\text{totalRent} = \text{round2}(\text{requiredQuantity} \times \text{rentPerUnit} \times \text{rentalDays})$$
 - **Movement Types (`InventoryMovementType`):**
   - `PURCHASE`: Increments `currentStock`.
   - `ADJUSTMENT_IN`: Increments `currentStock`.
   - `ADJUSTMENT_OUT`: Decrements `currentStock` (fails if quantity exceeds available stock).
   - `DAMAGE` / `LOSS`: Decrements `currentStock` (warehouse write-off).
-  - `EVENT_ISSUE`: Decrements `currentStock`; increments `EventInventory.issuedQuantity`.
-  - `EVENT_RETURN`: Increments `currentStock` for undamaged gear; increments `EventInventory.returnedQuantity`.
+  - `EVENT_ISSUE`: For `OWNED`: decrements `currentStock` and increments `EventInventory.issuedQuantity`. For `RENTED`: leaves warehouse stock untouched; increments `issuedQuantity`.
+  - `EVENT_RETURN`: For `OWNED`: increments `currentStock` for undamaged gear; increments `EventInventory.returnedQuantity`. For `RENTED`: leaves warehouse stock untouched; sets `actualReturnDate` and increments `returnedQuantity`.
 - **Event Return Validation:**
   $$\text{Outstanding} = \text{issuedQuantity} - (\text{returnedQuantity} + \text{damagedQuantity})$$
   $$\text{Attempted Return} = \text{newReturned} + \text{newDamaged}$$
@@ -228,6 +234,7 @@ EMS operates as a client-server architecture consisting of a Next.js 15 frontend
   $$\text{Outflows} = \sum(\text{EVENT\_ISSUE}) + \sum(\text{ADJUSTMENT\_OUT}) + \sum(\text{Warehouse DAMAGE}) + \sum(\text{LOSS})$$
   $$\text{Expected Stock} = \text{Inflows} - \text{Outflows}$$
   $$\text{Discrepancy} = \text{currentStock} - \text{Expected Stock}$$
+- **Frontend Guidance Reference:** Complete UI wireframes, TypeScript contracts, and API routes are defined in [docs/inventory-frontend-guide.md](file:///C:/Users/N/Documents/projects/EMS/docs/inventory-frontend-guide.md).
 
 ### 4.7 Vendor Tie-Ups & Banquet Commissions (Phase 8 Specification)
 - **Description:** Directory of external banquet halls, restaurants, and hotels linked to events.

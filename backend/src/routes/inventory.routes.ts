@@ -14,6 +14,7 @@ import {
   damageLossMovementSchema,
   movementQuerySchema,
   allocateEventItemsSchema,
+  updateEventItemSchema,
   issueEventItemsSchema,
   returnEventItemsSchema,
 } from "../validations/inventory.validation.js";
@@ -95,6 +96,11 @@ router.post(
   "/events/:eventId/allocate",
   validateRequest({ body: allocateEventItemsSchema }),
   (req, res, next) => inventoryController.allocateEventItems(req, res, next)
+);
+router.put(
+  "/events/:eventId/items/:inventoryItemId",
+  validateRequest({ body: updateEventItemSchema }),
+  (req, res, next) => inventoryController.updateEventItem(req, res, next)
 );
 router.post(
   "/events/:eventId/issue",

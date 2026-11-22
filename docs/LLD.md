@@ -288,20 +288,25 @@ During the technical audit, the following specific discrepancies were identified
   - Overpayment attempt: Rejected with `400 Bad Request` ("Payment exceeds invoice balance").
 
 ### 6.5 Inventory Management Module
-- **Purpose:** Movement-based tracking of physical reusable and consumable event assets.
+- **Purpose:** Movement-based tracking of physical reusable and consumable event assets, plus third-party vendor rental management.
 - **Actors:** Admin.
 - **Features:**
   - Item categorization (`InventoryCategory`) and item master (`InventoryItem`).
   - Classification: `REUSABLE` (furniture, electronics, cutlery) vs. `CONSUMABLE` (decor flowers, paper products).
+  - Ownership & Usage Type (`InventoryUsageType`):
+    - `OWNED`: Capital assets stored in company warehouse. Dispatches deduct stock; undamaged returns replenish stock.
+    - `RENTED`: External equipment sourced from rental vendors. Dispatches bypass warehouse stock; returns are returned to vendors. Tracks rental dates, automated `rentalDays`, `rentPerUnit`, and `totalRent`.
   - Purchase movement (`PURCHASE`) updating available stock and linking to purchase expense.
-  - Event issuance (`EVENT_ISSUE`) with stock decrements and `EventInventory` tracking.
+  - Event issuance (`EVENT_ISSUE`) with stock decrements (for owned) and `EventInventory` tracking.
   - Event returns (`EVENT_RETURN`), damages (`DAMAGE`), and losses (`LOSS`).
   - Manual stock adjustments (`ADJUSTMENT_IN`, `ADJUSTMENT_OUT`) with required audit notes.
+  - Single event item rate/term update via `PUT /events/:eventId/items/:inventoryItemId`.
 - **Validations:**
-  - Stock non-negativity constraint: `currentStock - issueQty >= 0`.
+  - Stock non-negativity constraint for owned assets: `currentStock - issueQty >= 0`.
   - Event return constraint: `returnedQty + damagedQty <= issuedQty - previouslyProcessedQty`.
 - **Failure Cases:**
-  - Insufficient stock on issue: Fails transactionally with `400 Bad Request` ("Insufficient stock available").
+  - Insufficient stock on owned issue: Fails transactionally with `400 Bad Request` ("Insufficient stock").
+- **Frontend Integration Guide:** Detailed UI component breakdown, wireframes, and API payloads are documented in [docs/inventory-frontend-guide.md](file:///C:/Users/N/Documents/projects/EMS/docs/inventory-frontend-guide.md).
 
 ### 6.6 Tie-Up & Collaboration Management Module
 - **Purpose:** Partner directory for venues (Banquet Halls, Hotels, Restaurants), security deposit asset ledgers, and event commission tracking.

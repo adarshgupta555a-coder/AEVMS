@@ -112,15 +112,19 @@ graph TD
 - **Item Classifications:**
   - `REUSABLE`: Mics, stage lights, sound mixers, trussing, furniture.
   - `CONSUMABLE`: Wristbands, badges, gaffer tape, party poppers.
+- **Equipment Ownership & Rental Tracking:**
+  - `OWNED`: Internal capital assets permanently stored in the company warehouse. Dispatches decrement warehouse `currentStock`; undamaged returns increment `currentStock`.
+  - `RENTED`: Third-party vendor equipment hired specifically for events (e.g. large-format LED video walls, specialized line arrays, high-capacity generators). Dispatches bypass warehouse stock checks; returns are returned directly to external vendors without incrementing internal warehouse stock. Tracks `rentalStartDate`, `rentalEndDate`, `actualReturnDate`, `rentalDays`, `rentPerUnit`, and automated `totalRent` calculation.
 - **Double-Entry Stock Ledger:**
   - Inflows: Purchases (`PURCHASE`), positive adjustments (`ADJUSTMENT_IN`), event returns (`EVENT_RETURN`).
   - Outflows: Event dispatches (`EVENT_ISSUE`), negative adjustments (`ADJUSTMENT_OUT`), warehouse write-offs (`DAMAGE`, `LOSS`).
 - **Event Logistics Cycle:**
-  1. *Requirement Planning*: Allocate required equipment without altering warehouse stock.
-  2. *Dispatch*: Validate warehouse stock availability; atomically decrement warehouse stock and record `EVENT_ISSUE`.
-  3. *Post-Event Return*: Inspect return. Good gear increments warehouse stock (`EVENT_RETURN`). Broken/damaged gear is excluded from warehouse stock and recorded as `DAMAGE`.
+  1. *Requirement Planning*: Allocate required equipment (`OWNED` or `RENTED`) without altering warehouse stock.
+  2. *Dispatch*: Validate warehouse stock for `OWNED` items (bypassed for `RENTED`); atomically decrement warehouse stock for owned items and record `EVENT_ISSUE`.
+  3. *Post-Event Return*: Inspect return. Undamaged owned gear increments warehouse stock (`EVENT_RETURN`). Damaged gear is logged as `DAMAGE` (vendor liability tracking for rented items; warehouse asset write-off for owned items).
   4. *Audit Tool*: Real-time ledger reconciliation calculating:
      $$\text{Warehouse Stock} = \sum(\text{Inflows}) - \sum(\text{Outflows})$$
+- **Frontend Guidance:** See [docs/inventory-frontend-guide.md](file:///C:/Users/N/Documents/projects/EMS/docs/inventory-frontend-guide.md) for full screen wireframes, TypeScript models, and API contract specifications.
 
 ### 4.7 Module 7: Tie-Up Venues & Banquet Commissions (Upcoming Phase 8)
 - **Partner Registry:** Directory of banquet halls, hotels, and restaurants.

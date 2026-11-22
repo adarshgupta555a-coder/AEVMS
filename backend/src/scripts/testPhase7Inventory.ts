@@ -8,6 +8,7 @@ import {
   USERROLE,
   InventoryItemType,
   InventoryMovementType,
+  InventoryUsageType,
   EventStatus,
 } from "../generated/prisma/enums.js";
 import { hashPassword } from "../utils/password.js";
@@ -953,6 +954,143 @@ async function runPhase7InventoryTestSuite() {
         resFinalAudit.data?.data?.audit?.isReconciled === true &&
         resFinalAudit.data?.data?.audit?.currentStock === 8,
       `Audit mismatch: ${JSON.stringify(resFinalAudit.data?.data?.audit)}`
+    );
+
+    // =========================================================================
+    // SECTION 4B: RENTAL INVENTORY & THIRD-PARTY VENDOR ASSETS
+    // =========================================================================
+    console.log("\n==> SECTION 4B: Rental Inventory & Third-Party Vendor Assets");
+
+    // 4B.1 Create specialized item for rental tracking
+    const rentalItem = await prisma.inventoryItem.create({
+      data: {
+        name: `P3.9 Outdoor LED Video Wall ${uniqueSuffix}`,
+        categoryId: cat2.id,
+        itemType: InventoryItemType.REUSABLE,
+        sku: `RENT-LED-${uniqueSuffix}`,
+        unit: "sqm",
+        currentStock: 0,
+        minimumStock: 0,
+        purchasePrice: 0,
+        isActive: true,
+      },
+    });
+
+    // 4B.2 Allocate Rented item with dates and rentPerUnit (auto-calculates rentalDays & totalRent)
+    const rentalStartDate = new Date("2026-12-01T10:00:00.000Z");
+    const rentalEndDate = new Date("2026-12-04T10:00:00.000Z"); // 3 days
+    const resAllocRental = await apiRequest(`/api/v1/inventory/events/${testEvent.id}/allocate`, {
+      method: "POST",
+      token: adminToken,
+      body: {
+        items: [
+          {
+            inventoryItemId: rentalItem.id,
+            requiredQuantity: 10,
+            usageType: InventoryUsageType.RENTED,
+            rentalStartDate,
+            rentalEndDate,
+            rentPerUnit: 2500, // 10 units * 2500 * 3 days = 75000
+            notes: "Sourced from BrightVision Rentals Ltd",
+          },
+        ],
+      },
+    });
+    const allocatedRental = resAllocRental.data?.data?.find((a: any) => a.inventoryItemId === rentalItem.id);
+    recordTest(
+      "Section 4B",
+      "4B.1 POST allocate computes rentalDays=3 and totalRent=75000 automatically for RENTED usageType",
+      resAllocRental.status === 200 &&
+        allocatedRental?.usageType === InventoryUsageType.RENTED &&
+        allocatedRental?.rentalDays === 3 &&
+        Number(allocatedRental?.totalRent) === 75000,
+      `Expected rentalDays 3 and totalRent 75000, received: ${JSON.stringify(allocatedRental)}`
+    );
+
+    // 4B.3 Update rental item via PUT /api/v1/inventory/events/:eventId/items/:inventoryItemId
+    const resUpdateRental = await apiRequest(
+      `/api/v1/inventory/events/${testEvent.id}/items/${rentalItem.id}`,
+      {
+        method: "PUT",
+        token: adminToken,
+        body: {
+          rentPerUnit: 2000, // Negotiated discount: 10 units * 2000 * 3 days = 60000
+        },
+      }
+    );
+    recordTest(
+      "Section 4B",
+      "4B.2 PUT /events/:eventId/items/:inventoryItemId updates rental rate and recalculates totalRent to 60000",
+      resUpdateRental.status === 200 &&
+        Number(resUpdateRental.data?.data?.totalRent) === 60000 &&
+        Number(resUpdateRental.data?.data?.rentPerUnit) === 2000,
+      `Expected totalRent 60000, received: ${JSON.stringify(resUpdateRental.data?.data)}`
+    );
+
+    // 4B.4 Event Inventory summary includes rental metrics
+    const resEventSummary = await apiRequest(`/api/v1/inventory/events/${testEvent.id}`, {
+      token: adminToken,
+    });
+    const summary = resEventSummary.data?.data?.summary;
+    recordTest(
+      "Section 4B",
+      "4B.3 GET /events/:eventId returns accurate rental summary (rentedItemsCount >= 1, totalRentalCost >= 60000)",
+      resEventSummary.status === 200 &&
+        summary?.rentedItemsCount >= 1 &&
+        summary?.ownedItemsCount >= 1 &&
+        summary?.totalRentalCost >= 60000,
+      `Summary mismatch: ${JSON.stringify(summary)}`
+    );
+
+    // 4B.5 Issue Rented Item: Warehouse stock is 0, but issue succeeds without stock decrement!
+    const resIssueRental = await apiRequest(`/api/v1/inventory/events/${testEvent.id}/issue`, {
+      method: "POST",
+      token: adminToken,
+      body: {
+        items: [
+          {
+            inventoryItemId: rentalItem.id,
+            quantity: 10,
+            notes: "Vendor delivered directly to concert venue",
+          },
+        ],
+      },
+    });
+    const rentalItemStockAfterIssue = await prisma.inventoryItem.findUnique({ where: { id: rentalItem.id } });
+    recordTest(
+      "Section 4B",
+      "4B.4 Issue RENTED item succeeds without warehouse stock deduction (stock remains 0)",
+      resIssueRental.status === 200 &&
+        Number(rentalItemStockAfterIssue?.currentStock) === 0 &&
+        resIssueRental.data?.data[0]?.usageType === InventoryUsageType.RENTED,
+      `Expected stock 0 and RENTED usageType, received stock=${rentalItemStockAfterIssue?.currentStock}, data=${JSON.stringify(resIssueRental.data)}`
+    );
+
+    // 4B.6 Return Rented Item: 9 in good condition (returned to vendor), 1 damaged (vendor liability)
+    const actualReturnDate = new Date();
+    const resReturnRental = await apiRequest(`/api/v1/inventory/events/${testEvent.id}/return`, {
+      method: "POST",
+      token: adminToken,
+      body: {
+        items: [
+          {
+            inventoryItemId: rentalItem.id,
+            returnedQuantity: 9,
+            damagedQuantity: 1,
+            actualReturnDate,
+            notes: "9 panels returned to vendor, 1 panel damaged during teardown",
+          },
+        ],
+      },
+    });
+    const rentalItemStockAfterReturn = await prisma.inventoryItem.findUnique({ where: { id: rentalItem.id } });
+    recordTest(
+      "Section 4B",
+      "4B.5 Return RENTED item does not increment warehouse stock and sets actualReturnDate",
+      resReturnRental.status === 200 &&
+        Number(rentalItemStockAfterReturn?.currentStock) === 0 &&
+        resReturnRental.data?.data[0]?.remainingOutstandingForEvent === 0,
+      `Expected stock 0 and outstanding 0, received stock=${rentalItemStockAfterReturn?.currentStock}, data=${JSON.stringify(resReturnRental.data)}`
     );
 
     // =========================================================================

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { InventoryItemType, InventoryMovementType } from "../generated/prisma/enums.js";
+import { InventoryItemType, InventoryMovementType, InventoryUsageType } from "../generated/prisma/enums.js";
 
 // ==========================================
 // CATEGORY VALIDATION SCHEMAS
@@ -125,6 +125,13 @@ export const movementQuerySchema = z.object({
 export const allocateEventItemSingleSchema = z.object({
   inventoryItemId: z.string().uuid("Invalid inventory item ID format"),
   requiredQuantity: z.coerce.number().min(0, "Required quantity cannot be negative"),
+  usageType: z.nativeEnum(InventoryUsageType).default(InventoryUsageType.OWNED).optional(),
+  rentalStartDate: z.coerce.date().optional().nullable(),
+  rentalEndDate: z.coerce.date().optional().nullable(),
+  actualReturnDate: z.coerce.date().optional().nullable(),
+  rentalDays: z.coerce.number().int().min(0, "rentalDays cannot be negative").optional().nullable(),
+  rentPerUnit: z.coerce.number().min(0, "rentPerUnit cannot be negative").optional().nullable(),
+  totalRent: z.coerce.number().min(0, "totalRent cannot be negative").optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),
 });
 
@@ -132,9 +139,22 @@ export const allocateEventItemsSchema = z.object({
   items: z.array(allocateEventItemSingleSchema).min(1, "At least one item allocation is required"),
 });
 
+export const updateEventItemSchema = z.object({
+  usageType: z.nativeEnum(InventoryUsageType).optional(),
+  requiredQuantity: z.coerce.number().min(0, "Required quantity cannot be negative").optional(),
+  rentalStartDate: z.coerce.date().optional().nullable(),
+  rentalEndDate: z.coerce.date().optional().nullable(),
+  actualReturnDate: z.coerce.date().optional().nullable(),
+  rentalDays: z.coerce.number().int().min(0).optional().nullable(),
+  rentPerUnit: z.coerce.number().min(0).optional().nullable(),
+  totalRent: z.coerce.number().min(0).optional().nullable(),
+  notes: z.string().trim().max(500).optional().nullable(),
+});
+
 export const issueEventItemSingleSchema = z.object({
   inventoryItemId: z.string().uuid("Invalid inventory item ID format"),
   quantity: z.coerce.number().positive("Quantity to issue must be greater than 0"),
+  usageType: z.nativeEnum(InventoryUsageType).optional(),
   notes: z.string().trim().max(500).optional().nullable(),
 });
 
@@ -147,6 +167,7 @@ export const returnEventItemSingleSchema = z
     inventoryItemId: z.string().uuid("Invalid inventory item ID format"),
     returnedQuantity: z.coerce.number().min(0, "returnedQuantity cannot be negative").default(0),
     damagedQuantity: z.coerce.number().min(0, "damagedQuantity cannot be negative").default(0),
+    actualReturnDate: z.coerce.date().optional().nullable(),
     notes: z.string().trim().max(500).optional().nullable(),
   })
   .refine(
@@ -171,5 +192,6 @@ export type AdjustmentMovementInput = z.infer<typeof adjustmentMovementSchema>;
 export type DamageLossMovementInput = z.infer<typeof damageLossMovementSchema>;
 export type MovementQueryInput = z.infer<typeof movementQuerySchema>;
 export type AllocateEventItemsInput = z.infer<typeof allocateEventItemsSchema>;
+export type UpdateEventItemInput = z.infer<typeof updateEventItemSchema>;
 export type IssueEventItemsInput = z.infer<typeof issueEventItemsSchema>;
 export type ReturnEventItemsInput = z.infer<typeof returnEventItemsSchema>;

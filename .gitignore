@@ -23,8 +23,10 @@ frontend/.env.local
 
 # Production Build Outputs
 backend/dist/
+backend/script/
 frontend/.next/
 frontend/out/
+frontend/script/
 frontend/build/
 dist/
 build/

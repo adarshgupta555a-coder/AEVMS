@@ -172,6 +172,19 @@ export class InventoryController {
     }
   }
 
+  async updateEventItem(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await inventoryService.updateEventItem(
+        req.params.eventId as string,
+        req.params.inventoryItemId as string,
+        req.body
+      );
+      return sendSuccess(res, result, "Event inventory item updated successfully.");
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async issueEventItems(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await inventoryService.issueEventItems(req.params.eventId as string, req.body);

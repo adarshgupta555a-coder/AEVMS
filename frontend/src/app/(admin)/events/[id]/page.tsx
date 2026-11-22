@@ -16,6 +16,7 @@ import {
   FileSpreadsheet,
   AlertCircle,
   XCircle,
+  Package,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -310,6 +311,17 @@ export default function EventDetailPage({
             </Button>
           )}
 
+          {/* Equipment Logistics shortcut */}
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs h-8 gap-1.5"
+            render={<Link href={`/events/${event.id}/inventory`} />}
+          >
+            <Package className="size-3.5" />
+            Equipment Logistics
+          </Button>
+
           {/* Issue Invoice shortcut */}
           <Button
             size="sm"
@@ -419,6 +431,10 @@ export default function EventDetailPage({
           <TabsTrigger value="schedules" className="gap-1.5 text-xs">
             <MapPin className="size-3.5" />
             Day Itinerary Schedule ({event.schedules?.length ?? 0})
+          </TabsTrigger>
+          <TabsTrigger value="inventory" className="gap-1.5 text-xs">
+            <Package className="size-3.5" />
+            Equipment Logistics
           </TabsTrigger>
         </TabsList>
 
@@ -635,6 +651,53 @@ export default function EventDetailPage({
         {/* Day Itinerary Tab */}
         <TabsContent value="schedules">
           <EventSchedulesTab eventId={event.id} />
+        </TabsContent>
+
+        {/* Equipment Logistics Tab */}
+        <TabsContent value="inventory" className="space-y-4">
+          <Card className="border-border/70 shadow-xs">
+            <CardHeader className="pb-3 border-b border-border/60">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base font-semibold">
+                    Equipment Logistics & Rental Services
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Warehouse gear dispatches, returns inspection, and third-party vendor rental management.
+                  </CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  className="text-xs h-8 gap-1.5"
+                  render={<Link href={`/events/${event.id}/inventory`} />}
+                >
+                  <Package className="size-3.5" />
+                  Open Full Logistics Hub
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed rounded-lg bg-muted/10">
+                <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
+                  <Package className="size-6" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Dedicated Equipment Logistics Hub
+                </h3>
+                <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4">
+                  Track warehouse inventory dispatches, return inspections, damage liability reports, and third-party vendor rental cost calculations.
+                </p>
+                <Button
+                  size="sm"
+                  render={<Link href={`/events/${event.id}/inventory`} />}
+                  className="text-xs gap-1.5"
+                >
+                  <Package className="size-3.5" />
+                  Manage Equipment & Rentals
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
