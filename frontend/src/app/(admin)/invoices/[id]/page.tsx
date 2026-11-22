@@ -140,7 +140,7 @@ export default function InvoiceDetailPage({
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      <div className="space-y-6 w-full pb-12">
         <div className="flex items-center gap-3 pb-2 border-b border-border/60">
           <Skeleton className="size-8 rounded-md" />
           <div className="space-y-2">
@@ -160,7 +160,7 @@ export default function InvoiceDetailPage({
 
   if (isError || !invoice) {
     return (
-      <div className="max-w-7xl mx-auto p-12 text-center space-y-4">
+      <div className="w-full p-12 text-center space-y-4">
         <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
           <AlertCircle className="size-6" />
         </div>
@@ -189,7 +189,7 @@ export default function InvoiceDetailPage({
     allocations.length === 0;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 w-full pb-12">
       {/* Top Navigation & Status Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border/60">
         <div className="flex items-center gap-3">

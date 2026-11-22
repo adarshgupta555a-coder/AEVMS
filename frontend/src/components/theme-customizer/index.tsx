@@ -1,112 +1,65 @@
-"use client"
+"use client";
 
-import React from "react"
-import { Layout, Palette, RotateCcw, Settings, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { Layout, Palette, RotateCcw, Settings, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useThemeManager } from "@/hooks/use-theme-manager"
-import { useSidebarConfig } from "@/hooks/use-sidebar-config"
-import { tweakcnThemes } from "@/config/theme-data"
-import { ThemeTab } from "./theme-tab"
-import { LayoutTab } from "./layout-tab"
-import { ImportModal } from "./import-modal"
-import { cn } from "@/lib/utils"
-import type { ImportedTheme } from "@/types/theme-customizer"
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useThemeManager } from "@/hooks/use-theme-manager";
+import { useSidebarConfig } from "@/hooks/use-sidebar-config";
+import { tweakcnThemes } from "@/config/theme-data";
+import { ThemeTab } from "./theme-tab";
+import { LayoutTab } from "./layout-tab";
+import { ImportModal } from "./import-modal";
+import { cn } from "@/lib/utils";
+import type { ImportedTheme } from "@/types/theme-customizer";
 
 interface ThemeCustomizerProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
   const {
+    config: themeConfig,
     applyImportedTheme,
     isDarkMode,
     resetTheme,
     applyRadius,
-    setBrandColorsValues,
     applyTheme,
     applyTweakcnTheme,
-  } = useThemeManager()
+  } = useThemeManager();
   const { config: sidebarConfig, updateConfig: updateSidebarConfig } =
-    useSidebarConfig()
+    useSidebarConfig();
 
-  const [activeTab, setActiveTab] = React.useState("theme")
-  const [selectedTheme, setSelectedTheme] = React.useState("default")
-  const [selectedTweakcnTheme, setSelectedTweakcnTheme] = React.useState("")
-  const [selectedRadius, setSelectedRadius] = React.useState("0.5rem")
-  const [importModalOpen, setImportModalOpen] = React.useState(false)
-  const [importedTheme, setImportedTheme] =
-    React.useState<ImportedTheme | null>(null)
+  const [activeTab, setActiveTab] = React.useState("theme");
+  const [importModalOpen, setImportModalOpen] = React.useState(false);
 
   const handleReset = () => {
-    // Complete reset to application defaults
+    // 1. Reset theme and remove stored settings from localStorage
+    resetTheme();
 
-    // 1. Reset all state variables to initial values
-    setSelectedTheme("default")
-    setSelectedTweakcnTheme("")
-    setSelectedRadius("0.5rem")
-    setImportedTheme(null) // Clear imported theme
-    setBrandColorsValues({}) // Clear brand colors state
-
-    // 2. Completely remove all custom CSS variables
-    resetTheme()
-
-    // 3. Reset the radius to default
-    applyRadius("0.5rem")
-
-    // 4. Reset sidebar to defaults
+    // 2. Reset sidebar to defaults
     updateSidebarConfig({
       variant: "sidebar",
       collapsible: "icon",
       side: "left",
-    })
-  }
+    });
+  };
 
   const handleImport = (themeData: ImportedTheme) => {
-    setImportedTheme(themeData)
-    // Clear other selections to indicate custom import is active
-    setSelectedTheme("")
-    setSelectedTweakcnTheme("")
-
-    // Apply the imported theme
-    applyImportedTheme(themeData, isDarkMode)
-  }
+    applyImportedTheme(themeData, isDarkMode);
+  };
 
   const handleImportClick = () => {
-    setImportModalOpen(true)
-  }
-
-  // Re-apply themes when theme mode changes
-  React.useEffect(() => {
-    if (importedTheme) {
-      applyImportedTheme(importedTheme, isDarkMode)
-    } else if (selectedTheme && selectedTheme !== "default") {
-      applyTheme(selectedTheme, isDarkMode)
-    } else if (selectedTweakcnTheme) {
-      const selectedPreset = tweakcnThemes.find(
-        (t) => t.value === selectedTweakcnTheme
-      )?.preset
-      if (selectedPreset) {
-        applyTweakcnTheme(selectedPreset, isDarkMode)
-      }
-    }
-  }, [
-    isDarkMode,
-    importedTheme,
-    selectedTheme,
-    selectedTweakcnTheme,
-    applyImportedTheme,
-    applyTheme,
-    applyTweakcnTheme,
-  ])
+    setImportModalOpen(true);
+  };
 
   return (
     <>
@@ -119,10 +72,10 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
             importModalOpen &&
             details.reason === "outside-press"
           ) {
-            details.cancel()
-            return
+            details.cancel();
+            return;
           }
-          onOpenChange(nextOpen)
+          onOpenChange(nextOpen);
         }}
         modal={false}
       >
@@ -145,6 +98,7 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
                   size="icon"
                   onClick={handleReset}
                   className="cursor-pointer size-8"
+                  title="Reset to defaults"
                 >
                   <RotateCcw />
                 </Button>
@@ -153,13 +107,14 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
                   size="icon"
                   onClick={() => onOpenChange(false)}
                   className="cursor-pointer size-8"
+                  title="Close customizer"
                 >
                   <X />
                 </Button>
               </div>
             </div>
             <SheetDescription className="text-sm text-muted-foreground sr-only">
-              Customize the them and layout of your dashboard.
+              Customize the theme and layout of your dashboard.
             </SheetDescription>
           </SheetHeader>
 
@@ -182,13 +137,26 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
 
               <TabsContent value="theme" className="flex-1 mt-0">
                 <ThemeTab
-                  selectedTheme={selectedTheme}
-                  setSelectedTheme={setSelectedTheme}
-                  selectedTweakcnTheme={selectedTweakcnTheme}
-                  setSelectedTweakcnTheme={setSelectedTweakcnTheme}
-                  selectedRadius={selectedRadius}
-                  setSelectedRadius={setSelectedRadius}
-                  setImportedTheme={setImportedTheme}
+                  selectedTheme={themeConfig.selectedTheme}
+                  setSelectedTheme={(value) => applyTheme(value, isDarkMode)}
+                  selectedTweakcnTheme={themeConfig.selectedTweakcnTheme}
+                  setSelectedTweakcnTheme={(value) => {
+                    const selectedPreset = tweakcnThemes.find(
+                      (t) => t.value === value
+                    )?.preset;
+                    if (selectedPreset) {
+                      applyTweakcnTheme(selectedPreset, value, isDarkMode);
+                    }
+                  }}
+                  selectedRadius={themeConfig.selectedRadius}
+                  setSelectedRadius={(radius) => applyRadius(radius)}
+                  setImportedTheme={(themeData) => {
+                    if (themeData) {
+                      applyImportedTheme(themeData, isDarkMode);
+                    } else {
+                      resetTheme();
+                    }
+                  }}
                   onImportClick={handleImportClick}
                 />
               </TabsContent>
@@ -207,12 +175,12 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
         onImport={handleImport}
       />
     </>
-  )
+  );
 }
 
 // Floating trigger button - positioned dynamically based on sidebar side
 export function ThemeCustomizerTrigger({ onClick }: { onClick: () => void }) {
-  const { config: sidebarConfig } = useSidebarConfig()
+  const { config: sidebarConfig } = useSidebarConfig();
 
   return (
     <Button
@@ -225,5 +193,5 @@ export function ThemeCustomizerTrigger({ onClick }: { onClick: () => void }) {
     >
       <Settings className="size-5" />
     </Button>
-  )
+  );
 }
