@@ -111,14 +111,14 @@ function LoginForm() {
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs flex items-center gap-1.5">
                 <Mail className="size-3.5 text-muted-foreground" />
-                Email Address
+                Email or Username
               </Label>
               <Input
                 id="email"
-                type="email"
-                placeholder="admin@ems.local"
+                type="text"
+                placeholder="admin.ems or admin@ems.local"
                 className="text-xs"
-                autoComplete="email"
+                autoComplete="username"
                 disabled={loginMutation.isPending}
                 {...register("email")}
               />
@@ -189,24 +189,24 @@ function LoginForm() {
                   variant="outline"
                   size="xs"
                   onClick={() =>
-                    handleDemoFill("admin@ems.local", "Admin@123456")
+                    handleDemoFill("admin.ems", "ems")
                   }
                   disabled={loginMutation.isPending}
                   className="text-[11px]"
                 >
-                  Admin Demo
+                  Admin (admin.ems)
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="xs"
                   onClick={() =>
-                    handleDemoFill("client@ems.local", "Client@123456")
+                    handleDemoFill("admin@ems.local", "Admin@123456")
                   }
                   disabled={loginMutation.isPending}
                   className="text-[11px]"
                 >
-                  Client Demo
+                  Admin (admin@ems.local)
                 </Button>
               </div>
             </div>
